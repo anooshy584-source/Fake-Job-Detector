@@ -22,8 +22,8 @@ st.set_page_config(
 st.title("🔍 Fake Job & Internship Ad Detector")
 
 st.write(
-    "Analyze a job or internship advertisement for "
-    "potential scam indicators using Artificial Intelligence."
+    "Analyze a job or internship advertisement for potential "
+    "scam indicators using AI."
 )
 
 st.info(
@@ -33,57 +33,49 @@ st.info(
 
 
 # ==========================================
-# GET GROQ API KEY
+# GROQ API KEY
 # ==========================================
 
 api_key = None
 
-# First try Streamlit Secrets
 try:
     api_key = st.secrets["GROQ_API_KEY"]
 except Exception:
     pass
 
-# If Secrets are not available, try environment variable
 if not api_key:
     api_key = os.getenv("GROQ_API_KEY")
 
 
 # ==========================================
-# USER INPUT
+# INPUT
 # ==========================================
 
 job_ad = st.text_area(
     "📋 Paste Job / Internship Advertisement",
     height=300,
-    placeholder=(
-        "Paste the complete job or internship advertisement here..."
-    )
+    placeholder="Paste the complete advertisement here..."
 )
 
 
 # ==========================================
-# ANALYZE BUTTON
+# ANALYZE
 # ==========================================
 
 if st.button("🔍 Analyze Advertisement", use_container_width=True):
 
-    # Empty input check
     if not job_ad.strip():
 
         st.warning(
             "Please paste a job or internship advertisement first."
         )
 
-    # Short input check
     elif len(job_ad.strip()) < 50:
 
         st.warning(
-            "Please provide more information about the advertisement "
-            "for a better analysis."
+            "Please provide more information about the advertisement."
         )
 
-    # API key check
     elif not api_key:
 
         st.error(
@@ -93,10 +85,6 @@ if st.button("🔍 Analyze Advertisement", use_container_width=True):
 
     else:
 
-        # ==========================================
-        # AI ANALYSIS
-        # ==========================================
-
         with st.spinner("🔎 Analyzing advertisement..."):
 
             try:
@@ -104,71 +92,44 @@ if st.button("🔍 Analyze Advertisement", use_container_width=True):
                 client = Groq(api_key=api_key)
 
                 prompt = f"""
-You are a cybersecurity assistant specializing in
-job and internship scam detection.
+Analyze this job or internship advertisement for potential scam indicators.
 
-Analyze the following job or internship advertisement
-for potential scam indicators.
+Do not say it is definitely fake or genuine.
+Give an indicative assessment based only on the supplied text.
 
-Your job is to identify warning signs based ONLY
-on the advertisement text provided by the user.
-
-IMPORTANT RULES:
-
-1. Do NOT claim that the advertisement is definitely fake.
-2. Do NOT claim that the advertisement is definitely genuine.
-3. Give an indicative risk assessment.
-4. Explain the reasons for the risk assessment.
-5. Do not invent information about the company.
-6. Identify suspicious indicators when present.
-7. Mention positive signs when present.
-8. Give practical safety recommendations.
-9. Risk score must be an integer between 0 and 100.
-
-Return ONLY valid JSON.
-
-Use exactly this structure:
+Return ONLY valid JSON using this exact structure:
 
 {{
-    "risk_level": "LOW",
-    "risk_score": 0,
-    "summary": "Short explanation of the analysis.",
-    "red_flags": [
-        "Potential red flag 1",
-        "Potential red flag 2"
-    ],
-    "positive_signs": [
-        "Positive sign 1",
-        "Positive sign 2"
-    ],
-    "recommendations": [
-        "Safety recommendation 1",
-        "Safety recommendation 2"
-    ]
+  "risk_level": "HIGH",
+  "risk_score": 85,
+  "summary": "Short explanation.",
+  "red_flags": [
+    "Short red flag",
+    "Short red flag",
+    "Short red flag"
+  ],
+  "positive_signs": [
+    "Short positive sign"
+  ],
+  "recommendations": [
+    "Short safety recommendation",
+    "Short safety recommendation"
+  ]
 }}
 
-Risk levels:
+Rules:
+- risk_level must be LOW, MEDIUM, or HIGH.
+- risk_score must be an integer from 0 to 100.
+- Keep summary under 40 words.
+- Give at most 3 red flags.
+- Give at most 2 positive signs.
+- Give at most 3 recommendations.
+- Keep every item short.
+- Return JSON only.
 
-LOW:
-Few or no significant warning signs are visible
-in the supplied advertisement.
-
-MEDIUM:
-Some warning signs are present and additional
-verification is recommended.
-
-HIGH:
-Several strong warning signs are present and
-the user should exercise significant caution.
-
-Advertisement to analyze:
-
+Advertisement:
 {job_ad}
 """
-
-                # ==========================================
-                # GROQ REQUEST
-                # ==========================================
 
                 response = client.chat.completions.create(
                     model="openai/gpt-oss-20b",
@@ -177,7 +138,7 @@ Advertisement to analyze:
                             "role": "system",
                             "content": (
                                 "You are a cybersecurity assistant "
-                                "specializing in job scam analysis. "
+                                "that analyzes job scam indicators. "
                                 "Return only valid JSON."
                             )
                         },
@@ -186,23 +147,19 @@ Advertisement to analyze:
                             "content": prompt
                         }
                     ],
-                    temperature=0.2,
-                    max_tokens=1200,
+                    temperature=0.1,
+                    max_tokens=2000,
                     response_format={
                         "type": "json_object"
                     }
                 )
-
-                # ==========================================
-                # PROCESS AI RESPONSE
-                # ==========================================
 
                 result_text = response.choices[0].message.content
 
                 result = json.loads(result_text)
 
                 # ==========================================
-                # GET RESULTS
+                # RESULTS
                 # ==========================================
 
                 risk_level = str(
@@ -231,9 +188,8 @@ Advertisement to analyze:
                     []
                 )
 
-
                 # ==========================================
-                # DISPLAY RESULTS
+                # RISK ASSESSMENT
                 # ==========================================
 
                 st.divider()
@@ -254,9 +210,8 @@ Advertisement to analyze:
                         risk_level
                     )
 
-
                 # ==========================================
-                # RISK LEVEL MESSAGE
+                # RISK MESSAGE
                 # ==========================================
 
                 if risk_level == "HIGH":
@@ -286,7 +241,6 @@ Advertisement to analyze:
                         "The AI could not determine a clear risk level."
                     )
 
-
                 # ==========================================
                 # SUMMARY
                 # ==========================================
@@ -294,7 +248,6 @@ Advertisement to analyze:
                 st.subheader("📝 Analysis Summary")
 
                 st.write(summary)
-
 
                 # ==========================================
                 # RED FLAGS
@@ -305,17 +258,13 @@ Advertisement to analyze:
                 if red_flags:
 
                     for flag in red_flags:
-
-                        st.warning(
-                            f"• {flag}"
-                        )
+                        st.warning(f"• {flag}")
 
                 else:
 
                     st.write(
-                        "No major red flags were identified."
+                        "No major red flags identified."
                     )
-
 
                 # ==========================================
                 # POSITIVE SIGNS
@@ -326,17 +275,13 @@ Advertisement to analyze:
                 if positive_signs:
 
                     for sign in positive_signs:
-
-                        st.success(
-                            f"• {sign}"
-                        )
+                        st.success(f"• {sign}")
 
                 else:
 
                     st.write(
-                        "No strong positive signs were identified."
+                        "No strong positive signs identified."
                     )
-
 
                 # ==========================================
                 # RECOMMENDATIONS
@@ -347,17 +292,13 @@ Advertisement to analyze:
                 if recommendations:
 
                     for recommendation in recommendations:
-
-                        st.write(
-                            f"• {recommendation}"
-                        )
+                        st.write(f"• {recommendation}")
 
                 else:
 
                     st.write(
-                        "No recommendations were generated."
+                        "No recommendations generated."
                     )
-
 
                 # ==========================================
                 # DISCLAIMER
@@ -368,21 +309,15 @@ Advertisement to analyze:
                 st.caption(
                     "Disclaimer: This application provides an "
                     "indicative risk assessment based on the "
-                    "advertisement text provided by the user. "
-                    "It does not independently verify the employer "
-                    "or guarantee that an advertisement is genuine "
-                    "or fraudulent."
+                    "advertisement text. It does not independently "
+                    "verify the employer or guarantee that an "
+                    "advertisement is genuine or fraudulent."
                 )
-
-
-            # ==========================================
-            # ERROR HANDLING
-            # ==========================================
 
             except json.JSONDecodeError:
 
                 st.error(
-                    "The AI returned an unexpected response format. "
+                    "The AI returned an invalid JSON response. "
                     "Please try again."
                 )
 
